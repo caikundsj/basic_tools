@@ -4,11 +4,7 @@ package cn.train.base.env;
 import cn.comm.configer.JobConfig;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.contrib.streaming.state.EmbeddedRocksDBStateBackend;
-import org.apache.flink.contrib.streaming.state.RocksDBStateBackend;
-import org.apache.flink.runtime.state.StateBackend;
-import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.runtime.state.hashmap.HashMapStateBackend;
-import org.apache.flink.runtime.state.memory.MemoryStateBackend;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.environment.CheckpointConfig;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -18,11 +14,9 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Flink stream env环境配置项
- *
- * @param <T>
  */
 
-public class BaseStreamApp<T> {
+public class BaseStreamApp {
     private final static Logger log = LoggerFactory.getLogger(BaseStreamApp.class);
 
     protected StreamExecutionEnvironment env = getStreamEnv();

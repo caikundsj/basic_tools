@@ -2,16 +2,17 @@ package cn.train.base.env;
 
 
 import cn.comm.configer.JobConfig;
+import org.apache.flink.api.common.RuntimeExecutionMode;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.EnvironmentSettings;
-import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 
 
 /**
  * Flink Table 环境配置项
  */
-public abstract class BaseTableApp<T> extends BaseStreamApp<T> {
+public abstract class BaseTableApp<T> extends BaseStreamApp {
 
     /**
      * Table 流执行环境
@@ -29,19 +30,14 @@ public abstract class BaseTableApp<T> extends BaseStreamApp<T> {
     }
 
 
-
-
     /**
      * 获取Table中流方式的执行环境
      *
      * @return StreamTableEnvironment
      */
     private StreamTableEnvironment getStreamTableEnv() {
-        TableEnvironment tableEnvironment = TableEnvironment.create(envSettings());
-        //StreamTableEnvironment tableEnvironment1 = StreamTableEnvironment.create(env, envSettings());
-        return (StreamTableEnvironment) tableEnvironment;
+        return StreamTableEnvironment.create(envSettings());
     }
-
 
 
     /**
@@ -49,11 +45,11 @@ public abstract class BaseTableApp<T> extends BaseStreamApp<T> {
      *
      * @return EnvironmentSettings
      */
-    private EnvironmentSettings envSettings() {
-        EnvironmentSettings.Builder builder = EnvironmentSettings.newInstance();
+    private StreamExecutionEnvironment envSettings() {
+//        EnvironmentSettings.Builder builder = EnvironmentSettings.newInstance();
         //setPlanner(builder);
-        setRuntimeMode(builder);
-        return builder.build();
+        setRuntimeMode();
+        return env;
     }
 
 
@@ -79,17 +75,17 @@ public abstract class BaseTableApp<T> extends BaseStreamApp<T> {
 
     /**
      * 设置流还是批处理方式
-     *
-     * @param builder builder
      */
-    protected void setRuntimeMode(EnvironmentSettings.Builder builder) {
+    protected void setRuntimeMode() {
         switch (JobConfig.runtimeMode) {
             case "BATCH":
-                builder.inBatchMode();
+                env.setRuntimeMode(RuntimeExecutionMode.BATCH);
                 break;
             case "STREAMING":
+                env.setRuntimeMode(RuntimeExecutionMode.STREAMING);
+                break;
             default:
-                builder.inStreamingMode();
+                env.setRuntimeMode(RuntimeExecutionMode.AUTOMATIC);
         }
     }
 

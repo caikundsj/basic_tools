@@ -15,7 +15,7 @@ import org.slf4j.LoggerFactory;
 public class ConfigUtils {
     private final static Logger log = LoggerFactory.getLogger(ConfigUtils.class);
 
-    private static final Config rootConfig = ConfigFactory.load("env-init");
+    private static final Config rootConfig = ConfigFactory.load("./env-init");
     private static final String configType;
 
     static {
@@ -27,7 +27,7 @@ public class ConfigUtils {
      */
     public static void initLoadConfig() {
         // 根据环境标识，加载不同环境配置
-        Config eleConfig = ConfigFactory.load("conf/" + configType + "-application");
+        Config eleConfig = ConfigFactory.load("./" + configType + "-application");
         loadKafkaConfig(eleConfig);
         loadJobConfig(eleConfig);
         loadMysqlConfig(eleConfig);
@@ -124,6 +124,17 @@ public class ConfigUtils {
         ClickHouseConfig.databaseName = clickhouseConfig.getString("database-name");
         ClickHouseConfig.username = clickhouseConfig.getString("username");
         ClickHouseConfig.password = clickhouseConfig.getString("password");
+    }
+
+    public static void main(String[] args) {
+        try {
+            /*
+                加载配置文件中的配置项
+             */
+            ConfigUtils.initLoadConfig();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
 }

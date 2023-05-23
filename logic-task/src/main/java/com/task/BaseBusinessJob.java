@@ -2,7 +2,6 @@ package com.task;
 
 import cn.train.base.IBaseRun;
 import cn.train.base.env.BaseTableApp;
-import org.apache.flink.table.api.TableResult;
 
 public class BaseBusinessJob extends BaseTableApp implements IBaseRun {
     @Override
@@ -25,4 +24,5 @@ public class BaseBusinessJob extends BaseTableApp implements IBaseRun {
                 ")");
         tableStreamEnv.executeSql("select dev,DATE_FORMAT(run_time,'yyyy-MM-dd HH:mm:ss') as d from pv_cloud_stat_collect_measuring_map;");
     }
+
 }
