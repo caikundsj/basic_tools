@@ -1,4 +1,4 @@
-package com.task;
+package com.tasks.example;
 
 import cn.train.base.IBaseRun;
 import cn.train.base.env.BaseTableApp;

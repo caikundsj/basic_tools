@@ -1,9 +1,8 @@
-package com.task;
+package com.tasks.example;
 
 import cn.comm.utils.ConfigUtils;
 import cn.train.base.IBaseRun;
 import cn.train.base.env.BaseStreamApp;
-import org.apache.flink.streaming.api.datastream.DataStreamSource;
 
 public class LearnStream_TF extends BaseStreamApp implements IBaseRun {
     /*

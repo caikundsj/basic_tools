@@ -1,7 +1,8 @@
-package com.task;
+package com.tasks;
 
 
 import cn.comm.utils.ConfigUtils;
+import com.tasks.Job.BaseBusinessJob;
 
 
 public class EssMain {
