@@ -50,8 +50,8 @@ public class LearnStream_DataSource<T> extends BaseTableApp<T> implements IBaseR
     @Override
     public void doMain() throws Exception {
         //基于文件
-        DataStreamSource<String> readTextFile = env.readTextFile("D:/tmp.csv");
-        env.readFile(new TextInputFormat(new Path("D:/tmp.csv")),
+        DataStreamSource<String> readTextFile = env.readTextFile("/tmp.csv");
+        env.readFile(new TextInputFormat(new Path("/tmp.csv")),
                 "D:/tmp.csv",
                 FileProcessingMode.PROCESS_ONCE,
                 1,

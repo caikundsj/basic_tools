@@ -10,6 +10,8 @@ public class IotSession {
         Session build = new Session.Builder()
                 .host("10.10.5.150")
                 .port(6667)
+                .username("root")
+                .password("root")
                 .build();
 
     }

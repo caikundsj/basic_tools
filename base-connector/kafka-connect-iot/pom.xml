@@ -24,5 +24,10 @@
             <artifactId>iotdb-session</artifactId>
             <version>1.0.1</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.iotdb</groupId>
+            <artifactId>iotdb-jdbc</artifactId>
+            <version>1.0.1</version>
+        </dependency>
     </dependencies>
 </project>
