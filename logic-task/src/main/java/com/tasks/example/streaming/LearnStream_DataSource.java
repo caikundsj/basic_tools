@@ -1,4 +1,4 @@
-package com.tasks.example;
+package com.tasks.example.streaming;
 
 import cn.train.base.IBaseRun;
 import cn.train.base.env.BaseTableApp;

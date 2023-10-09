@@ -1,4 +1,4 @@
-package com.tasks.example;
+package com.tasks.example.streaming;
 
 import cn.comm.utils.ConfigUtils;
 import cn.train.base.IBaseRun;
