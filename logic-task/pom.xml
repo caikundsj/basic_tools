@@ -168,6 +168,11 @@
             <artifactId>flink-cep_2.11</artifactId>
             <version>1.14.4</version>
         </dependency>
+        <dependency>
+            <groupId>com.zaxxer</groupId>
+            <artifactId>HikariCP</artifactId>
+            <version>4.0.3</version>
+        </dependency>
     </dependencies>
 
 </project>

@@ -3,6 +3,8 @@ package com.tasks.example.streaming;
 import cn.train.base.IBaseRun;
 import cn.train.base.env.BaseStreamApp;
 import com.alibaba.fastjson.JSONObject;
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.serialization.SimpleStringSchema;
@@ -33,19 +35,19 @@ import java.util.concurrent.TimeUnit;
 public class LearnStream_AsyncIO extends BaseStreamApp implements IBaseRun {
     @Override
     public void doMain() throws Exception {
-//添加 kafka source
+        //添加 kafka source
         KafkaSource<String> source = KafkaSource.<String>builder()
-                .setBootstrapServers("10.10.5.150:9092")
-                .setTopics("topic")
-                .setGroupId("flink_ne_cloud_DimensionExpansionJob")
-                .setStartingOffsets(OffsetsInitializer.earliest())
+                .setBootstrapServers("10.10.5.150:9092,10.10.5.151:9092,10.10.5.152:9092")
+                .setTopics("ne_cloud_stat_mutation_measuring")
+                .setGroupId("ne_cloud_group_stat_mutation_measuring_lattice")
+                .setStartingOffsets(OffsetsInitializer.latest())
                 .setValueOnlyDeserializer(new SimpleStringSchema())
                 .build();
         //添加 kafka sink
         KafkaSink<String> sink = KafkaSink.<String>builder()
-                .setBootstrapServers("10.10.5.150:9092")
+                .setBootstrapServers("10.10.5.150:9092,10.10.5.151:9092,10.10.5.152:9092")
                 .setRecordSerializer(KafkaRecordSerializationSchema.builder()
-                        .setTopic("topic-DimensionExpansion")
+                        .setTopic("ne_cloud_zipper_mutation")
                         .setValueSerializationSchema(new SimpleStringSchema())
                         .build()).build();
 
@@ -64,23 +66,41 @@ public class LearnStream_AsyncIO extends BaseStreamApp implements IBaseRun {
     }
 
     static class MyRichAsyncFunction extends RichAsyncFunction<JSONObject, JSONObject> {
+
         // MySQL数据库连接
-        static final String URL = "jdbc:mysql://10.10.62.21:3306/ne_cloud?characterEncoding=UTF-8";
+        static final String URL = "jdbc:mysql://10.10.62.21:3306/ne_equ?characterEncoding=UTF-8";
         // 数据库用户名
         static final String USERNAME = "root";
         // 数据库密码
         static final String PASSWORD = "admin@hckj";
         // 驱动
         static final String DRIVER = "com.mysql.jdbc.Driver";
+
         //数据库连接
-        private Connection conn;
+        private HikariDataSource ds;
         // 创建线程池
         private ThreadPoolExecutor threadPoolExecutor;
 
         @Override
         public void open(Configuration parameters) throws Exception {
-            Class.forName(DRIVER);
-            conn = DriverManager.getConnection(URL, USERNAME, PASSWORD);
+            HikariConfig config = new HikariConfig();
+            //配置文件
+            config.setJdbcUrl(URL);//mysql
+            config.setDriverClassName(DRIVER);
+            config.setUsername(USERNAME);
+            config.setPassword(PASSWORD);
+            config.addDataSourceProperty("cachePrepStmts", "true");
+            config.addDataSourceProperty("prepStmtCacheSize", "250");
+            config.addDataSourceProperty("prepStmtCacheSqlLimit", "2048");
+            config.addDataSourceProperty("useServerPrepStmts", "true");
+            config.addDataSourceProperty("useLocalSessionState", "true");
+            config.addDataSourceProperty("rewriteBatchedStatements", "true");
+            config.addDataSourceProperty("cacheResultSetMetadata", "true");
+            config.addDataSourceProperty("cacheServerConfiguration", "true");
+            config.addDataSourceProperty("elideSetAutoCommits", "true");
+            config.addDataSourceProperty("maintainTimeStats", "false");
+            ds = new HikariDataSource(config);
+
             //初始化线程池
             threadPoolExecutor = new ThreadPoolExecutor(
                     10,
@@ -112,13 +132,12 @@ public class LearnStream_AsyncIO extends BaseStreamApp implements IBaseRun {
 
         // 查询MySQL数据库，并将数据放入到 Map 中
         public JSONObject query(JSONObject dataSer_param) throws Exception {
-            System.out.print("接收到数据：" + dataSer_param + " ");
-            // 模拟查询延迟，单位：秒
-            int delay = new Random().nextInt(20);
-            System.out.printf("模拟查询延迟：%s 秒%n", delay);
-            Thread.sleep(delay * 1000);
-            SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
-            System.out.println(sdf.format(new Date()) + "  查询数据库");
+//            System.out.print("接收到数据：" + dataSer_param + " ");
+//            // 模拟查询延迟，单位：秒
+//            int delay = new Random().nextInt(20);
+//            System.out.printf("模拟查询延迟：%s 秒%n", delay);
+//            Thread.sleep(delay * 1000);
+            System.out.println(new SimpleDateFormat("HH:mm:ss").format(new Date()) + "  查询数据库");
             String sql = " SELECT tmp_aggr.aggr_station_id,\n" +
                     "       tmp_aggr.aggr_station_code,\n" +
                     "       tmp_aggr.aggr_station_name,\n" +
@@ -162,46 +181,49 @@ public class LearnStream_AsyncIO extends BaseStreamApp implements IBaseRun {
                     "  AND tmp_type.recovery = FALSE\n" +
                     "  AND tmp_station.recovery = FALSE\n" +
                     "  AND tmp_param.recovery = FALSE\n" +
-                    "  AND cast(? AS BIGINT) = tmp_station.station_id\n" +
-                    "  AND ? = tmp_logic.cabinet_no\n" +
-                    "  AND ? = tmp_logic.emu_sn ";
+                    "  AND cast(? AS signed) = tmp_station.station_id\n" +
+                    "  AND cast(? AS signed) = tmp_logic.cabinet_no\n" +
+                    "  AND tmp_logic.emu_sn = ? ";
+
             PreparedStatement statement = null;
             ResultSet rs = null;
-            String name = null;
+
+            JSONObject dataSer_out = new JSONObject();
             try {
-                statement = conn.prepareStatement(sql);
-                statement.setString(1, dataSer_param.getString("station"));
-                statement.setString(2, dataSer_param.getString("cabinet"));
-                statement.setString(3, dataSer_param.getString("emu_sn"));
+                statement = ds.getConnection().prepareStatement(sql);
+                statement.setObject(1, dataSer_param.getString("station"));
+                statement.setObject(2, dataSer_param.getString("cabinet"));
+                statement.setObject(3, dataSer_param.getString("emu_sn"));
                 rs = statement.executeQuery();
                 //全量更新维度数据到内存
                 if (rs.next()) {
-                    dataSer_param.fluentPut("aggr_station_id", rs.getString(1));
-                    dataSer_param.fluentPut("aggr_station_code", rs.getString(2));
-                    dataSer_param.fluentPut("aggr_station_name", rs.getString(3));
-                    dataSer_param.fluentPut("station_id", rs.getString(1));
-                    dataSer_param.fluentPut("station_code", rs.getString(1));
-                    dataSer_param.fluentPut("station_name", rs.getString(1));
-                    dataSer_param.fluentPut("station_abbr", rs.getString(1));
-                    dataSer_param.fluentPut("sta_capacity", rs.getString(1));
-                    dataSer_param.fluentPut("type_id", rs.getString(1));
-                    dataSer_param.fluentPut("type_code", rs.getString(1));
-                    dataSer_param.fluentPut("type_name", rs.getString(1));
-                    dataSer_param.fluentPut("logic_equ_id", rs.getString(1));
-                    dataSer_param.fluentPut("logic_equ_code", rs.getString(1));
-                    dataSer_param.fluentPut("logic_equ_name", rs.getString(1));
-                    dataSer_param.fluentPut("inter_equ", rs.getString(1));
-                    dataSer_param.fluentPut("param_id", rs.getString(1));
-                    dataSer_param.fluentPut("param_code", rs.getString(1));
-                    dataSer_param.fluentPut("param_type", rs.getString(1));
-                    dataSer_param.fluentPut("param_name", rs.getString(1));
-                    dataSer_param.fluentPut("param_claz", rs.getString(1));
-                    dataSer_param.fluentPut("alm_claz", rs.getString(1));
-                    dataSer_param.fluentPut("alm_level", rs.getString(1));
-                    dataSer_param.fluentPut("fault_monitor", rs.getString(1));
-                    dataSer_param.fluentPut("main_advise", rs.getString(1));
-                    dataSer_param.fluentPut("no_alm", rs.getString(1));
-                    dataSer_param.fluentPut("tenant_id", rs.getString(1));
+
+                    dataSer_out.fluentPut("aggr_station_id", rs.getString(1));
+                    dataSer_out.fluentPut("aggr_station_code", rs.getString(2));
+                    dataSer_out.fluentPut("aggr_station_name", rs.getString(3));
+                    dataSer_out.fluentPut("station_id", rs.getString(4));
+                    dataSer_out.fluentPut("station_code", rs.getString(5));
+                    dataSer_out.fluentPut("station_name", rs.getString(6));
+                    dataSer_out.fluentPut("station_abbr", rs.getString(7));
+                    dataSer_out.fluentPut("sta_capacity", rs.getString(8));
+                    dataSer_out.fluentPut("type_id", rs.getString(9));
+                    dataSer_out.fluentPut("type_code", rs.getString(10));
+                    dataSer_out.fluentPut("type_name", rs.getString(11));
+                    dataSer_out.fluentPut("logic_equ_id", rs.getString(12));
+                    dataSer_out.fluentPut("logic_equ_code", rs.getString(13));
+                    dataSer_out.fluentPut("logic_equ_name", rs.getString(14));
+                    dataSer_out.fluentPut("inter_equ", rs.getString(15));
+                    dataSer_out.fluentPut("param_id", rs.getString(16));
+                    dataSer_out.fluentPut("param_code", rs.getString(17));
+                    dataSer_out.fluentPut("param_type", rs.getString(18));
+                    dataSer_out.fluentPut("param_name", rs.getString(19));
+                    dataSer_out.fluentPut("param_claz", rs.getString(20));
+                    dataSer_out.fluentPut("alm_claz", rs.getString(21));
+                    dataSer_out.fluentPut("alm_level", rs.getString(22));
+                    dataSer_out.fluentPut("fault_monitor", rs.getString(23));
+                    dataSer_out.fluentPut("main_advise", rs.getString(24));
+                    dataSer_out.fluentPut("no_alm", rs.getString(25));
+                    dataSer_out.fluentPut("tenant_id", rs.getString(26));
                     System.out.printf("  查询结果：%s", dataSer_param);
                 }
             } finally {
@@ -212,7 +234,7 @@ public class LearnStream_AsyncIO extends BaseStreamApp implements IBaseRun {
                     statement.close();
                 }
             }
-            return dataSer_param;
+            return dataSer_out;
         }
 
         /**
@@ -230,9 +252,9 @@ public class LearnStream_AsyncIO extends BaseStreamApp implements IBaseRun {
         @Override
         public void close() throws Exception {
             // 关闭数据库连接
-            if (conn != null) {
-                conn.close();
-            }
+//            if (conn != null) {
+//                conn.close();
+//            }
             // 终止定时任务
             if (threadPoolExecutor != null) {
                 threadPoolExecutor.shutdown();

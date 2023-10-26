@@ -1,4 +1,4 @@
-package cn.comm.extended.udf;
+package com.extended;
 
 
 import com.googlecode.aviator.AviatorEvaluator;
@@ -11,9 +11,8 @@ import java.util.Map;
 
 /**
  * EL表达式解析判断
- * return: String
  */
-public class ELFunUDF extends ScalarFunction {
+public class ELFun extends ScalarFunction {
 
     private static final long serialVersionUID = 3054479359028126443L;
 
